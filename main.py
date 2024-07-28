@@ -4,7 +4,7 @@ from aiogram.contrib.middlewares.logging import LoggingMiddleware
 from aiogram.contrib.fsm_storage.redis import RedisStorage2
 from aiogram.types import ParseMode, BotCommand
 from aiogram.utils import executor
-from config import API_TOKEN, REDIS_HOST, REDIS_PORT, REDIS_PASSWORD, POSTGRES_URL
+from config import API_TOKEN, REDIS_URL, POSTGRES_URL
 from database import Database
 import handlers
 
@@ -12,9 +12,9 @@ logging.basicConfig(level=logging.INFO)
 
 bot = Bot(token=API_TOKEN, parse_mode=ParseMode.HTML)
 
-logging.info(f"Connecting to Redis at {REDIS_HOST}:{REDIS_PORT} with password: {'yes' if REDIS_PASSWORD else 'no'}")
+logging.info(f"Connecting to Redis at {REDIS_URL}")
 
-storage = RedisStorage2(host=REDIS_HOST, port=REDIS_PORT, password=REDIS_PASSWORD)
+storage = RedisStorage2.from_url(REDIS_URL)
 
 dp = Dispatcher(bot, storage=storage)
 dp.middleware.setup(LoggingMiddleware())
