@@ -13,7 +13,7 @@ async def start_command(message: types.Message):
 
 async def city_input(message: types.Message, state: FSMContext):
     city_name = message.text.strip().capitalize()
-    bot = state.bot
+    bot = message.bot
     db = bot.get('db')
 
     logging.info(f"User entered city: {city_name}")
@@ -25,7 +25,6 @@ async def city_input(message: types.Message, state: FSMContext):
             logging.info(f"City {city_name} registered")
 
         cities = await conn.fetch("SELECT * FROM cities")
-
     nearest_city = None
     for c in cities:
         if c['name'] != city_name:
@@ -43,7 +42,7 @@ async def city_input(message: types.Message, state: FSMContext):
 
 async def next_city(callback_query: types.CallbackQuery, state: FSMContext):
     current_city = (await state.get_data()).get("current_city")
-    bot = state.bot
+    bot = callback_query.bot
     db = bot.get('db')
 
     async with db.pool.acquire() as conn:
