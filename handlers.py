@@ -13,14 +13,14 @@ async def start_command(message: types.Message):
 
 async def city_input(message: types.Message, state: FSMContext):
     city_name = message.text.strip().capitalize()
-    db = state.bot.get('db')
+    bot = state.bot
+    db = bot.get('db')
 
     logging.info(f"User entered city: {city_name}")
 
     async with db.pool.acquire() as conn:
         city = await conn.fetchrow("SELECT * FROM cities WHERE name = $1", city_name)
         if city is None:
-
             await conn.execute("INSERT INTO cities (name) VALUES ($1)", city_name)
             logging.info(f"City {city_name} registered")
 
@@ -43,7 +43,8 @@ async def city_input(message: types.Message, state: FSMContext):
 
 async def next_city(callback_query: types.CallbackQuery, state: FSMContext):
     current_city = (await state.get_data()).get("current_city")
-    db = state.bot.get('db')
+    bot = state.bot
+    db = bot.get('db')
 
     async with db.pool.acquire() as conn:
         cities = await conn.fetch("SELECT * FROM cities")
