@@ -1,4 +1,5 @@
 import asyncpg
+import logging
 
 class Database:
     def __init__(self, dsn):
@@ -14,12 +15,12 @@ class Database:
                 CREATE TABLE IF NOT EXISTS cities (
                     id SERIAL PRIMARY KEY,
                     name VARCHAR(255) UNIQUE NOT NULL
-                );
-                CREATE INDEX IF NOT EXISTS idx_city_name ON cities(name);
+                )
             ''')
 
     async def add_city(self, city):
         async with self.pool.acquire() as connection:
+            logging.info(f"Inserting city into database: {city}")
             await connection.execute('INSERT INTO cities (name) VALUES ($1) ON CONFLICT DO NOTHING', city)
 
     async def get_nearest_city(self, city):

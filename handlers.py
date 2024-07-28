@@ -1,3 +1,4 @@
+import logging
 from aiogram import Dispatcher, types
 from aiogram.dispatcher.filters import Text
 from aiogram.dispatcher import FSMContext
@@ -13,8 +14,11 @@ async def start_command(message: types.Message):
 
 async def city_input(message: types.Message, state: FSMContext, db: Database):
     city = message.text.strip()
+    logging.info(f"Adding city: {city}")
     await db.add_city(city)
+    logging.info(f"City added: {city}")
     nearest_city = await db.get_nearest_city(city)
+    logging.info(f"Nearest city: {nearest_city}")
     if nearest_city:
         inline_kb = InlineKeyboardMarkup().add(InlineKeyboardButton("Следующий город", callback_data="next_city"))
         await message.answer(f"Ближайший зарегистрированный город: {nearest_city}", reply_markup=inline_kb)
@@ -26,7 +30,9 @@ async def city_input(message: types.Message, state: FSMContext, db: Database):
 async def next_city(callback_query: types.CallbackQuery, state: FSMContext, db: Database):
     data = await state.get_data()
     current_city = data.get('current_city')
+    logging.info(f"Current city: {current_city}")
     nearest_city = await db.get_nearest_city(current_city)
+    logging.info(f"Next nearest city: {nearest_city}")
     if nearest_city:
         inline_kb = InlineKeyboardMarkup().add(InlineKeyboardButton("Следующий город", callback_data="next_city"))
         await callback_query.message.edit_text(f"Следующий ближайший зарегистрированный город: {nearest_city}", reply_markup=inline_kb)
