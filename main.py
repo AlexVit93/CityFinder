@@ -1,12 +1,14 @@
 import logging
+import handlers
 from aiogram import Bot, Dispatcher
 from aiogram.contrib.middlewares.logging import LoggingMiddleware
 from aiogram.contrib.fsm_storage.redis import RedisStorage2
 from aiogram.types import ParseMode, BotCommand
 from aiogram.utils import executor
-from config import API_TOKEN, REDIS_HOST, REDIS_PORT, REDIS_PASSWORD, POSTGRES_URL
 from database import Database
-import handlers
+from config import API_TOKEN, REDIS_HOST, REDIS_PORT, REDIS_PASSWORD, POSTGRES_URL
+
+
 
 logging.basicConfig(level=logging.INFO)
 
@@ -29,7 +31,7 @@ async def on_startup(dispatcher: Dispatcher):
 async def set_bot_commands(dispatcher: Dispatcher):
     commands = [
         BotCommand(command="/start", description="Перезапуск 🚀"),
-        BotCommand(command="/menu", description="Меню 📌"),
+        BotCommand(command="/show_cities", description="Вывести все добавленные города 🏙️"),
     ]
     await bot.set_my_commands(commands)
 
