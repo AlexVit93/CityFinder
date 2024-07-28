@@ -24,7 +24,7 @@ database = Database(dsn=POSTGRES_URL)
 async def on_startup(dispatcher: Dispatcher):
     await database.connect()
     await set_bot_commands(dispatcher)
-    bot['db'] = database 
+    bot['db'] = database  
 
 async def set_bot_commands(dispatcher: Dispatcher):
     commands = [

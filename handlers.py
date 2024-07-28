@@ -9,48 +9,48 @@ class Form(StatesGroup):
 
 async def start_command(message: types.Message):
     await Form.city.set()
-    await message.reply("Введите название вашего города:")
+    await message.reply("Введите название вашего города или список городов через запятую:")
 
 async def city_input(message: types.Message, state: FSMContext):
-    city_name = message.text.strip().capitalize()
+    city_names = [city.strip().capitalize() for city in message.text.split(',')]
     bot = message.bot
     db = bot.get('db')
 
-    logging.info(f"User entered city: {city_name}")
+    logging.info(f"User entered cities: {city_names}")
+
+    registered_cities = []
 
     async with db.pool.acquire() as conn:
-        city = await conn.fetchrow("SELECT * FROM cities WHERE name = $1", city_name)
-        if city is None:
-            await conn.execute("INSERT INTO cities (name) VALUES ($1)", city_name)
-            logging.info(f"City {city_name} registered")
+        for city_name in city_names:
+            city = await conn.fetchrow("SELECT * FROM cities WHERE name = $1", city_name)
+            if city is None:
+                await conn.execute("INSERT INTO cities (name) VALUES ($1)", city_name)
+                registered_cities.append(city_name)
+                logging.info(f"City {city_name} registered")
 
-        last_city = await conn.fetchrow("SELECT * FROM cities ORDER BY id DESC LIMIT 1")
-
-    if last_city:
+    if registered_cities:
+        last_registered_city = registered_cities[-1]
         keyboard = InlineKeyboardMarkup()
         keyboard.add(InlineKeyboardButton(text="+", callback_data='next_city'))
-        await message.reply(f"Последний зарегистрированный город: {last_city['name']}", reply_markup=keyboard)
-        await state.update_data(current_city=city_name, last_city=last_city['name'])
+        await message.reply(f"Последний зарегистрированный город: {last_registered_city}", reply_markup=keyboard)
+        await state.update_data(current_city=registered_cities, last_city=last_registered_city)
     else:
-        await message.reply("Нет других зарегистрированных городов.")
-    
+        await message.reply("Все введенные города уже зарегистрированы.")
+
     await Form.city.set()
 
 async def next_city(callback_query: types.CallbackQuery, state: FSMContext):
     data = await state.get_data()
-    last_city = data.get("last_city")
-    bot = callback_query.bot
-    db = bot.get('db')
-
-    async with db.pool.acquire() as conn:
-        last_city = await conn.fetchrow("SELECT * FROM cities ORDER BY id DESC LIMIT 1")
-
-    if last_city:
-        await callback_query.message.reply(f"Последний зарегистрированный город: {last_city['name']}")
-        await state.update_data(last_city=last_city['name'])
+    current_cities = data.get("current_city", [])
+    if current_cities:
+        last_registered_city = current_cities.pop()
+        keyboard = InlineKeyboardMarkup()
+        keyboard.add(InlineKeyboardButton(text="+", callback_data='next_city'))
+        await callback_query.message.reply(f"Последний зарегистрированный город: {last_registered_city}", reply_markup=keyboard)
+        await state.update_data(current_city=current_cities, last_city=last_registered_city)
     else:
         await callback_query.message.reply("Нет других зарегистрированных городов.")
-
+        await state.finish()
     await callback_query.answer()
 
 def register_handlers(dp: Dispatcher, db):
