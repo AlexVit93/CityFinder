@@ -1,47 +1,67 @@
 import logging
 from aiogram import Dispatcher, types
-from aiogram.dispatcher.filters import Text
 from aiogram.dispatcher import FSMContext
 from aiogram.dispatcher.filters.state import State, StatesGroup
 from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
-from database import Database
 
 class Form(StatesGroup):
     city = State()
 
 async def start_command(message: types.Message):
-    await message.answer("Введите название вашего города:")
+    await Form.city.set()
+    await message.reply("Введите название вашего города:")
 
-async def city_input(message: types.Message, state: FSMContext, db: Database):
-    city = message.text.strip()
-    logging.info(f"Adding city: {city}")
-    await db.add_city(city)
-    logging.info(f"City added: {city}")
-    nearest_city = await db.get_nearest_city(city)
-    logging.info(f"Nearest city: {nearest_city}")
-    if nearest_city:
-        inline_kb = InlineKeyboardMarkup().add(InlineKeyboardButton("Следующий город", callback_data="next_city"))
-        await message.answer(f"Ближайший зарегистрированный город: {nearest_city}", reply_markup=inline_kb)
-        await state.update_data(current_city=city, nearest_city=nearest_city)
-    else:
-        await message.answer("Других зарегистрированных городов пока нет.")
-    await Form.next()
+async def city_input(message: types.Message, state: FSMContext):
+    user_data = await state.get_data()
+    city_name = message.text.strip().capitalize()
+    db = state.dispatcher['db']
+    logging.info(f"User entered city: {city_name}")
+    async with db.pool.acquire() as conn:
+        city = await conn.fetchrow("SELECT * FROM cities WHERE name = $1", city_name)
+        if city is None:
+            await conn.execute("INSERT INTO cities (name) VALUES ($1)", city_name)
+            logging.info(f"City {city_name} registered")
+        cities = await conn.fetch("SELECT * FROM cities")
 
-async def next_city(callback_query: types.CallbackQuery, state: FSMContext, db: Database):
-    data = await state.get_data()
-    current_city = data.get('current_city')
-    logging.info(f"Current city: {current_city}")
-    nearest_city = await db.get_nearest_city(current_city)
-    logging.info(f"Next nearest city: {nearest_city}")
+    nearest_city = None
+    for c in cities:
+        if c['name'] != city_name:
+            nearest_city = c['name']
+            break
+
     if nearest_city:
-        inline_kb = InlineKeyboardMarkup().add(InlineKeyboardButton("Следующий город", callback_data="next_city"))
-        await callback_query.message.edit_text(f"Следующий ближайший зарегистрированный город: {nearest_city}", reply_markup=inline_kb)
-        await state.update_data(nearest_city=nearest_city)
+        keyboard = InlineKeyboardMarkup()
+        keyboard.add(InlineKeyboardButton(text="+", callback_data='+'))
+        await message.reply(f"Ближайший зарегистрированный город: {nearest_city}", reply_markup=keyboard)
     else:
-        await callback_query.message.edit_text("Других зарегистрированных городов больше нет.")
+        await message.reply("Нет других зарегистрированных городов.")
+    
+    await state.finish()
+
+async def next_city(callback_query: types.CallbackQuery, state: FSMContext):
+    user_data = await state.get_data()
+    current_city = user_data.get("current_city")
+    db = state.dispatcher['db']
+
+    async with db.pool.acquire() as conn:
+        cities = await conn.fetch("SELECT * FROM cities")
+
+    nearest_city = None
+    for c in cities:
+        if c['name'] != current_city:
+            nearest_city = c['name']
+            break
+
+    if nearest_city:
+        await callback_query.message.answer(f"Следующий ближайший зарегистрированный город: {nearest_city}")
+        await state.update_data(current_city=nearest_city)
+    else:
+        await callback_query.message.answer("Нет других зарегистрированных городов.")
+
     await callback_query.answer()
 
-def register_handlers(dp: Dispatcher, db: Database):
+def register_handlers(dp: Dispatcher, db):
+    dp['db'] = db
     dp.register_message_handler(start_command, commands='start', state="*")
     dp.register_message_handler(city_input, state=Form.city, content_types=types.ContentTypes.TEXT)
-    dp.register_callback_query_handler(next_city, Text(equals='next_city'), state=Form.city)
+    dp.register_callback_query_handler(next_city, text='+')
