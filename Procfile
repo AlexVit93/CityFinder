@@ -1,1 +1,1 @@
-web: python main.py
+web: python test_redis_connection.py:
