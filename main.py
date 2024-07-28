@@ -13,15 +13,16 @@ logging.basicConfig(level=logging.INFO)
 
 bot = Bot(token=API_TOKEN, parse_mode=ParseMode.HTML)
 
-redis = aioredis.from_url(f"redis://{REDIS_URL}:{REDIS_PORT}")
-storage = RedisStorage2(redis)
-
-dp = Dispatcher(bot, storage=storage)
+dp = Dispatcher(bot)
 dp.middleware.setup(LoggingMiddleware())
 
 database = Database(dsn=POSTGRES_URL)
 
 async def on_startup(dispatcher: Dispatcher):
+    redis = await aioredis.create_redis_pool(f"redis://{REDIS_URL}:{REDIS_PORT}")
+    storage = RedisStorage2(redis)
+    dispatcher.storage = storage
+
     await database.connect()
     await set_bot_commands(dispatcher)
 
