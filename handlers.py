@@ -24,41 +24,32 @@ async def city_input(message: types.Message, state: FSMContext):
             await conn.execute("INSERT INTO cities (name) VALUES ($1)", city_name)
             logging.info(f"City {city_name} registered")
 
-        cities = await conn.fetch("SELECT * FROM cities")
-    nearest_city = None
-    for c in cities:
-        if c['name'] != city_name:
-            nearest_city = c['name']
-            break
+        last_city = await conn.fetchrow("SELECT * FROM cities ORDER BY id DESC LIMIT 1")
 
-    if nearest_city:
+    if last_city:
         keyboard = InlineKeyboardMarkup()
-        keyboard.add(InlineKeyboardButton(text="+", callback_data='+'))
-        await message.reply(f"Ближайший зарегистрированный город: {nearest_city}", reply_markup=keyboard)
+        keyboard.add(InlineKeyboardButton(text="+", callback_data='next_city'))
+        await message.reply(f"Последний зарегистрированный город: {last_city['name']}", reply_markup=keyboard)
+        await state.update_data(current_city=city_name, last_city=last_city['name'])
     else:
         await message.reply("Нет других зарегистрированных городов.")
     
-    await state.finish()
+    await Form.city.set()
 
 async def next_city(callback_query: types.CallbackQuery, state: FSMContext):
-    current_city = (await state.get_data()).get("current_city")
+    data = await state.get_data()
+    last_city = data.get("last_city")
     bot = callback_query.bot
     db = bot.get('db')
 
     async with db.pool.acquire() as conn:
-        cities = await conn.fetch("SELECT * FROM cities")
+        last_city = await conn.fetchrow("SELECT * FROM cities ORDER BY id DESC LIMIT 1")
 
-    nearest_city = None
-    for c in cities:
-        if c['name'] != current_city:
-            nearest_city = c['name']
-            break
-
-    if nearest_city:
-        await callback_query.message.answer(f"Следующий ближайший зарегистрированный город: {nearest_city}")
-        await state.update_data(current_city=nearest_city)
+    if last_city:
+        await callback_query.message.reply(f"Последний зарегистрированный город: {last_city['name']}")
+        await state.update_data(last_city=last_city['name'])
     else:
-        await callback_query.message.answer("Нет других зарегистрированных городов.")
+        await callback_query.message.reply("Нет других зарегистрированных городов.")
 
     await callback_query.answer()
 
@@ -66,4 +57,4 @@ def register_handlers(dp: Dispatcher, db):
     dp['db'] = db
     dp.register_message_handler(start_command, commands='start', state="*")
     dp.register_message_handler(city_input, state=Form.city, content_types=types.ContentTypes.TEXT)
-    dp.register_callback_query_handler(next_city, text='+')
+    dp.register_callback_query_handler(next_city, state=Form.city, text='next_city')

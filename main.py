@@ -34,6 +34,6 @@ async def set_bot_commands(dispatcher: Dispatcher):
     await bot.set_my_commands(commands)
 
 handlers.register_handlers(dp, database)
- 
+
 if __name__ == '__main__':
     executor.start_polling(dp, on_startup=on_startup)
