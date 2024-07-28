@@ -12,6 +12,9 @@ async def start_command(message: types.Message):
     await Form.city.set()
     await message.reply("Введите название вашего города или список городов через запятую:")
 
+async def menu_command(message: types.Message):
+    await message.reply("Выберите команду из меню:\n/start - Перезапуск\n/show_cities - Вывести все добавленные города\n/delete_city - Удалить город")
+
 async def city_input(message: types.Message, state: FSMContext):
     city_names = [city.strip().title() for city in message.text.split(',')]
     bot = message.bot
