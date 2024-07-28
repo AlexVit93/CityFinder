@@ -12,7 +12,7 @@ async def start_command(message: types.Message):
     await message.reply("Введите название вашего города или список городов через запятую:")
 
 async def city_input(message: types.Message, state: FSMContext):
-    city_names = [city.strip().capitalize() for city in message.text.split(',')]
+    city_names = [city.strip().title() for city in message.text.split(',')]
     bot = message.bot
     db = bot.get('db')
 
