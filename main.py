@@ -7,7 +7,7 @@ from aiogram.utils import executor
 from config import API_TOKEN, REDIS_URL, REDIS_PORT, POSTGRES_URL
 from database import Database
 import handlers
-import aioredis
+import redis.asyncio as redis
 
 logging.basicConfig(level=logging.INFO)
 
@@ -19,8 +19,8 @@ dp.middleware.setup(LoggingMiddleware())
 database = Database(dsn=POSTGRES_URL)
 
 async def on_startup(dispatcher: Dispatcher):
-    redis = await aioredis.create_redis_pool(f"redis://{REDIS_URL}:{REDIS_PORT}")
-    storage = RedisStorage2(redis)
+    redis_client = redis.Redis(host=REDIS_URL, port=REDIS_PORT)
+    storage = RedisStorage2(redis_client)
     dispatcher.storage = storage
 
     await database.connect()
