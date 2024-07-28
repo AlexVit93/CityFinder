@@ -6,6 +6,7 @@ from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
 
 class Form(StatesGroup):
     city = State()
+    delete_city = State()
 
 async def start_command(message: types.Message):
     await Form.city.set()
@@ -66,9 +67,30 @@ async def show_cities(message: types.Message):
     else:
         await message.reply("Нет зарегистрированных городов.")
 
+async def delete_city_command(message: types.Message):
+    await Form.delete_city.set()
+    await message.reply("Введите название города, который вы хотите удалить:")
+
+async def delete_city(message: types.Message, state: FSMContext):
+    city_name = message.text.strip().title()
+    bot = message.bot
+    db = bot.get('db')
+
+    async with db.pool.acquire() as conn:
+        result = await conn.execute("DELETE FROM cities WHERE name = $1", city_name)
+
+    if result == 'DELETE 1':
+        await message.reply(f"Город {city_name} был удален из базы данных.")
+    else:
+        await message.reply(f"Город {city_name} не найден в базе данных.")
+
+    await state.finish()
+
 def register_handlers(dp: Dispatcher, db):
     dp['db'] = db
     dp.register_message_handler(start_command, commands='start', state="*")
     dp.register_message_handler(show_cities, commands='show_cities', state="*")
+    dp.register_message_handler(delete_city_command, commands='delete_city', state="*")
     dp.register_message_handler(city_input, state=Form.city, content_types=types.ContentTypes.TEXT)
+    dp.register_message_handler(delete_city, state=Form.delete_city, content_types=types.ContentTypes.TEXT)
     dp.register_callback_query_handler(next_city, state=Form.city, text='next_city')

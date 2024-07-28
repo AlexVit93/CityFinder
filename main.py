@@ -32,6 +32,7 @@ async def set_bot_commands(dispatcher: Dispatcher):
     commands = [
         BotCommand(command="/start", description="Перезапуск 🚀"),
         BotCommand(command="/show_cities", description="Вывести все добавленные города 🏙️"),
+        BotCommand(command="/delete_city", description="Удалить город 🗑️"),
     ]
     await bot.set_my_commands(commands)
 
