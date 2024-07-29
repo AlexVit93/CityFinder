@@ -80,7 +80,7 @@ async def delete_city(message: types.Message, state: FSMContext):
     db = bot.get('db')
 
     async with db.pool.acquire() as conn:
-        result = await conn.execute("DELETE FROM cities WHERE LOWER(name) = LOWER($1)", city_name)
+        result = await conn.execute("DELETE FROM cities WHERE LOWER(name) = LOWER($1)", city_name.lower())
 
     if result == 'DELETE 1':
         await message.reply(f"Город {city_name} был удален из базы данных.")
